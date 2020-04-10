@@ -1,23 +1,36 @@
-package main
+package blockchain
 
-import (
-	"fmt"
+type Block struct {
+	Hash     []byte
+	Data     []byte
+	PrevHash []byte
+	Nonce    int
+}
 
-	github.com/shraddha0602/blockchain-implementation/blockchain"
-)
+type Blockchain struct {
+	Blocks []*Block
+}
 
-func main() {
-	chain := blockchain.InitBlockchain()
+func CreateBlock(data string, prevHash []byte) *Block {
+	block := &Block{[]byte{}, []byte(data), prevHash, 0}
+	pow := Proof(block)
+	nonce, hash := pow.Run()
 
-	chain.AddBlock("First Block after Genesis")
-	chain.AddBlock("Second Block after Genesis")
-	chain.AddBlock("Third Block after Genesis")
+	block.Hash = hash[:]
+	block.Nonce = nonce
+	return block
+}
 
-	for _, block := range chain.Blocks {
-		fmt.Printf("Previous Hash : %x\n", block.PrevHash)
-		fmt.Printf("Data : %s \n", block.Data)
-		fmt.Printf("Hash : %x\n", block.Hash)
+func (chain *Blockchain) AddBlock(data string) {
+	prevBlock := chain.Blocks[len(chain.Blocks)-1]
+	newBlock := CreateBlock(data, prevBlock.Hash)
+	chain.Blocks = append(chain.Blocks, newBlock)
+}
 
-		fmt.Printf("Hello there")
-	}
+func GenesisBlock() *Block {
+	return CreateBlock("Genesis", []byte{})
+}
+
+func InitBlockchain() *Blockchain {
+	return &Blockchain{[]*Block{GenesisBlock()}}
 }
