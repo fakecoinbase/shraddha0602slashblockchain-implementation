@@ -17,7 +17,8 @@ import (
 // check hash
 //		-> first few bytes contain 0's
 
-const Difficulty = 12
+const Difficulty = 12 //Determines how difficult to mine block
+// variable in practice
 
 type ProofOfWork struct {
 	Block  *Block
@@ -67,6 +68,7 @@ func (pow *ProofOfWork) Run() (int, []byte) {
 	return nonce, hash[:]
 }
 
+// Validate the block
 func (pow *ProofOfWork) Validate() bool {
 	var intHash big.Int
 	data := pow.InitData(pow.Block.Nonce)
