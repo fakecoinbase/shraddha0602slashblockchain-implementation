@@ -2,13 +2,17 @@ package blockchain
 
 import (
 	"fmt"
+	"os"
+	"runtime"
 
 	"github.com/dgraph-io/badger"
 )
 
 // Database Path
 const (
-	dbPath = "./tmp/blocks"
+	dbPath      = "./tmp/blocks"
+	dbFile      = "./tmp/blocks/MANIFEST"
+	genesisData = "First Transaction from Genesis"
 )
 
 type Blockchain struct {
@@ -20,6 +24,14 @@ type Blockchain struct {
 type BlockchainIterator struct {
 	CurrentHash []byte
 	Database    *badger.DB
+}
+
+//to check if database exists
+func DBexists() bool {
+	if _, err := os.Stat(dbFile); os.IsNotExist(err) {
+		return false
+	}
+	return true
 }
 
 // Adds block to Blockchain
@@ -47,6 +59,11 @@ func (chain *Blockchain) AddBlock(data string) {
 //Initialize Blockchain on start
 func InitBlockchain() *Blockchain {
 	var lasthash []byte
+
+	if DBexists() {
+		fmt.Println("Blockchain already exists")
+		runtime.Goexit()
+	}
 
 	opts := badger.DefaultOptions
 	opts.Dir = dbPath
