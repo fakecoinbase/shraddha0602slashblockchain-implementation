@@ -15,18 +15,6 @@ type Transaction struct {
 	Outputs []TxOutput
 }
 
-type TxOutput struct {
-	Value  int    //Value in tokens
-	PubKey string // to unlock tokens in Value
-}
-
-//references to prev output
-type TxInput struct {
-	ID  []byte //transaction ID
-	Out int    //index of transaction
-	Sig string
-}
-
 //create hash of Input of a transaction
 func (tx *Transaction) SetID() {
 	var buff bytes.Buffer
@@ -56,16 +44,6 @@ func CoinbaseTx(to, data string) *Transaction {
 //check if genesis block in transaction
 func (tx *Transaction) IsCoinBase() bool {
 	return len(tx.Inputs) == 1 && len(tx.Inputs[0].ID) == 0 && tx.Inputs[0].Out == -1
-}
-
-//unlock data in Inputs
-func (in *TxInput) CanUnlock(data string) bool {
-	return in.Sig == data
-}
-
-//unlock data in Outputs
-func (out *TxOutput) CanBeUnlocked(data string) bool {
-	return out.PubKey == data
 }
 
 func NewTransactions(from, to string, amount int, chain *Blockchain) *Transaction {
