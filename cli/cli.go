@@ -3,6 +3,7 @@ package cli
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"runtime"
 	"strconv"
@@ -45,6 +46,11 @@ func (cli *CommandLine) printBlockchain() {
 
 		pow := blockchain.Proof(block)
 		fmt.Printf("PoW : %s\n", strconv.FormatBool(pow.Validate()))
+
+		for _, tx := range block.Transactions {
+			fmt.Println(tx)
+		}
+
 		fmt.Println()
 
 		//check if block is Genesis block
@@ -57,6 +63,9 @@ func (cli *CommandLine) printBlockchain() {
 
 //create the blockchain
 func (cli *CommandLine) createBlockchain(address string) {
+	if !wallet.ValidateAddress(address) {
+		log.Panic("Invalid Address!!")
+	}
 	chain := blockchain.InitBlockchain(address)
 	chain.Database.Close()
 	fmt.Println("\nBlockchain Created!!")
@@ -64,11 +73,17 @@ func (cli *CommandLine) createBlockchain(address string) {
 
 // Get all unspent transac and get balance
 func (cli *CommandLine) getBalance(address string) {
+	if !wallet.ValidateAddress(address) {
+		log.Panic("Invalid Address!!")
+	}
+
 	chain := blockchain.ContinueBlockchain(address)
 	defer chain.Database.Close()
 
 	bal := 0
-	UTXouts := chain.FindUTXOut(address)
+	pubKeyHash := wallet.Base58Decode([]byte(address))
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+	UTXouts := chain.FindUTXOut(pubKeyHash)
 
 	for _, out := range UTXouts {
 		bal += out.Value
@@ -79,6 +94,10 @@ func (cli *CommandLine) getBalance(address string) {
 
 //send tokens from one acct to other
 func (cli *CommandLine) send(from, to string, amt int) {
+	if !wallet.ValidateAddress(to) || !wallet.ValidateAddress(from) {
+		log.Panic("Invalid Address!!")
+	}
+
 	chain := blockchain.ContinueBlockchain(from)
 	defer chain.Database.Close()
 

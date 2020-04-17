@@ -1,23 +1,47 @@
 package blockchain
 
+import (
+	"bytes"
+
+	"github.com/shraddha0602/blockchain-implementation/wallet"
+)
+
 type TxOutput struct {
-	Value  int    //Value in tokens
-	PubKey string // to unlock tokens in Value
+	Value      int    //Value in tokens
+	PubKeyHash []byte // to unlock tokens in Value
 }
 
 //references to prev output
 type TxInput struct {
-	ID  []byte //transaction ID
-	Out int    //index of transaction
-	Sig string
+	ID        []byte //transaction ID
+	Out       int    //index of transaction
+	Signature []byte
+	PubKey    []byte
 }
 
-//unlock data in Inputs
-func (in *TxInput) CanUnlock(data string) bool {
-	return in.Sig == data
+func NewTXOutput(value int, address string) *TxOutput {
+	txo := &TxOutput{value, nil}
+	txo.Lock([]byte(address))
+
+	return txo
 }
 
-//unlock data in Outputs
-func (out *TxOutput) CanBeUnlocked(data string) bool {
-	return out.PubKey == data
+//unlock input
+func (in *TxInput) UsesKey(pubKeyHash []byte) bool {
+	lockingHash := wallet.PublicKeyHash(in.PubKey)
+
+	return bytes.Compare(lockingHash, pubKeyHash) == 0
+}
+
+//lock the output
+func (out *TxOutput) Lock(address []byte) {
+	pubKeyHash := wallet.Base58Decode(address)
+	// remove version and checksum
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-4]
+	out.PubKeyHash = pubKeyHash
+}
+
+//checks to see if the o/p is locked with Public Key
+func (out *TxOutput) IsLockedWithKey(pubKeyHash []byte) bool {
+	return bytes.Compare(out.PubKeyHash, pubKeyHash) == 0
 }

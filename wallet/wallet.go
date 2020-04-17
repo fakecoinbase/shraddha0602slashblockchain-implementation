@@ -1,11 +1,11 @@
 package wallet
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/sha256"
-	"fmt"
 	"log"
 
 	"golang.org/x/crypto/ripemd160"
@@ -13,19 +13,19 @@ import (
 
 const (
 	checksumlen = 4
-	version = byte(0x00)
+	version     = byte(0x00)
 )
 
 type Wallet struct {
 	PrivateKey ecdsa.PrivateKey
-	PublicKey []byte
+	PublicKey  []byte
 }
 
 func NewKeyPair() (ecdsa.PrivateKey, []byte) {
 	curve := elliptic.P256()
 
 	private, err := ecdsa.GenerateKey(curve, rand.Reader)
-	if err!=nil {
+	if err != nil {
 		log.Panic(err)
 	}
 
@@ -45,11 +45,11 @@ func PublicKeyHash(pubKey []byte) []byte {
 
 	hasher := ripemd160.New()
 	_, err := hasher.Write(pubHash[:])
-	if err!=nil {
+	if err != nil {
 		log.Panic(err)
 	}
 	publicRipMD := hasher.Sum(nil)
-	return publicRipMD 
+	return publicRipMD
 }
 
 func CheckSum(payload []byte) []byte {
@@ -65,11 +65,17 @@ func (w Wallet) Address() []byte {
 	checksum := CheckSum(versionHash)
 
 	fullHash := append(versionHash, checksum...)
-	address :=Base58Encode(fullHash)
-
-	fmt.Printf("Public Key : %x\n", w.PublicKey)
-	fmt.Printf("Public Hash : %x\n", pubHash)
-	fmt.Printf("Address : %x\n",address)
+	address := Base58Encode(fullHash)
 
 	return address
+}
+
+func ValidateAddress(address string) bool {
+	pubKeyHash := Base58Decode([]byte(address))
+	actualCheckSum := pubKeyHash[len(pubKeyHash)-checksumlen:]
+	version := pubKeyHash[0]
+	pubKeyHash = pubKeyHash[1 : len(pubKeyHash)-checksumlen]
+	targetCheckSum := CheckSum(append([]byte{version}, pubKeyHash...))
+
+	return bytes.Compare(actualCheckSum, targetCheckSum) == 0
 }
