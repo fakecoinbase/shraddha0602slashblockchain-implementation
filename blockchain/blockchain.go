@@ -39,7 +39,7 @@ func DBexists() bool {
 }
 
 // Adds block to Blockchain
-func (chain *Blockchain) AddBlock(txs []*Transaction) {
+func (chain *Blockchain) AddBlock(txs []*Transaction) *Block {
 	var lastHash []byte
 
 	err := chain.Database.View(func(txn *badger.Txn) error {
@@ -59,6 +59,7 @@ func (chain *Blockchain) AddBlock(txs []*Transaction) {
 		return err
 	})
 	Handle(err)
+	return newBlock
 }
 
 //Initialize Blockchain on start
@@ -142,8 +143,8 @@ func (itr *BlockchainIterator) Next() *Block {
 	return block
 }
 
-func (chain *Blockchain) FindUnspentTransactions(publicKeyHash []byte) []Transaction {
-	var unspent []Transaction
+func (chain *Blockchain) FindUnspentTransactions() map[string]TxOutputs {
+	UTXO := make(map[string]TxOutputs)
 	spent := make(map[string][]int)
 
 	itr := chain.Iterator()
@@ -162,17 +163,15 @@ func (chain *Blockchain) FindUnspentTransactions(publicKeyHash []byte) []Transac
 						}
 					}
 				}
-				if out.IsLockedWithKey(publicKeyHash) {
-					unspent = append(unspent, *tx)
-				}
+				outs := UTXO[txID]
+				outs.Outputs = append(outs.Outputs, out)
+				UTXO[txID] = outs
 			}
 
 			if tx.IsCoinBase() == false {
 				for _, in := range tx.Inputs {
-					if in.UsesKey(publicKeyHash) {
-						inTxID := hex.EncodeToString(in.ID)
-						spent[inTxID] = append(spent[inTxID], in.Out)
-					}
+					inTxID := hex.EncodeToString(in.ID)
+					spent[inTxID] = append(spent[inTxID], in.Out)
 				}
 			}
 		}
@@ -181,49 +180,7 @@ func (chain *Blockchain) FindUnspentTransactions(publicKeyHash []byte) []Transac
 			break
 		}
 	}
-	return unspent
-}
-
-//Finding all unspent transaction outputs
-func (chain *Blockchain) FindUTXOut(publicKeyHash []byte) []TxOutput {
-	var UTXout []TxOutput
-	unspentTransac := chain.FindUnspentTransactions(publicKeyHash)
-
-	for _, tx := range unspentTransac {
-		for _, out := range tx.Outputs {
-			if out.IsLockedWithKey(publicKeyHash) {
-				UTXout = append(UTXout, out)
-			}
-		}
-	}
-
-	return UTXout
-}
-
-//for transactions that are not coin based
-//find how many tokens available
-func (chain *Blockchain) FindSpendableOutput(publicKeyHash []byte, amount int) (int, map[string][]int) {
-	unspentOutput := make(map[string][]int)
-	unspentTransac := chain.FindUnspentTransactions(publicKeyHash)
-	accumulated := 0
-
-Work:
-	for _, tx := range unspentTransac {
-		txID := hex.EncodeToString(tx.ID)
-
-		for outIdx, out := range tx.Outputs {
-			if out.IsLockedWithKey(publicKeyHash) && accumulated < amount {
-				accumulated += out.Value
-				unspentOutput[txID] = append(unspentOutput[txID], outIdx)
-
-				if accumulated >= amount {
-					break Work
-				}
-			}
-		}
-	}
-
-	return accumulated, unspentOutput
+	return UTXO
 }
 
 //finding transaction
