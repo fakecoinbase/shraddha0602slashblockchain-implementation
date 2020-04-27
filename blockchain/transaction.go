@@ -44,29 +44,20 @@ func (tx *Transaction) Hash() []byte {
 	return hash[:]
 }
 
-//create hash of Input of a transaction
-func (tx *Transaction) SetID() {
-	var buff bytes.Buffer
-	var hash [32]byte
-
-	encode := gob.NewEncoder(&buff)
-	err := encode.Encode(tx)
-	Handle(err)
-
-	hash = sha256.Sum256(buff.Bytes())
-	tx.ID = hash[:]
-}
-
 //transaction if genesis block
 func CoinbaseTx(to, data string) *Transaction {
 	if data == "" {
-		data = fmt.Sprintf("Coins to %s", to)
+		randData := make([]byte, 24)
+		_, err := rand.Read(randData)
+		Handle(err)
+		data = fmt.Sprintf("%x", randData)
 	}
 	txin := TxInput{[]byte{}, -1, nil, []byte(data)}
-	txout := NewTXOutput(100, to)
+	txout := NewTXOutput(25, to)
 
 	tx := Transaction{nil, []TxInput{txin}, []TxOutput{*txout}}
-	tx.SetID()
+	tx.ID = tx.Hash()
+
 	return &tx
 }
 
@@ -86,7 +77,7 @@ func NewTransactions(from, to string, amount int, UTXO *UTXOSet) *Transaction {
 
 	acc, validOuts := UTXO.FindSpendableOutput(publicKeyHash, amount)
 
-	if acc < amount {
+	if acc > amount {
 		log.Panic("Error : insufficient balance")
 	}
 
